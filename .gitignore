@@ -1,0 +1,36 @@
+# 清除缓存
+# git rm -r --cached .
+
+# ignore 目录
+/res
+
+# ignore 所有路径下的目录
+.ipynb_checkpoints/
+__pycache__/
+
+# ignore 文件类型
+*.h5ad
+*.pyc
+
+
+# ignore 文件
+README.ipynb
+init.ipynb
+ignore
+
+# ! not ignore
+!.gitignore
+
+## for /utils
+/utils/**/*.ipynb
+/utils/del_py.py
+
+## for /dataset 仅保留.ipynb
+/dataset/**/info_series
+/dataset/**/info_download*
+/dataset/**/*series_matrix.txt
+/dataset/**/*.gz
+/dataset/**/*log*
+/dataset/**/*.jpg
+/dataset/**/*.rtf
+/dataset/**/pre_*.ipynb
