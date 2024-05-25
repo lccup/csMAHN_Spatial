@@ -4,7 +4,32 @@
 # In[ ]:
 
 
+from pathlib import Path
 import json as json
+
+import numpy as np
+import pandas as pd
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# In[ ]:
+
+
+rng = np.random.default_rng()
+
+
+# In[ ]:
+
+
+def show_dict_key(data, tag='', sort_key=True):
+    print("\n>{}['']".format(tag).ljust(75, '-'))
+    ks = list(data.keys())
+    if sort_key:
+        ks = np.sort(ks)
+    print(*['\t{}'.format(k) for k in ks], sep='\n')
 
 
 # # Block

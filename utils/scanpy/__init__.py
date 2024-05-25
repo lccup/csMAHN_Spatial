@@ -4,5 +4,6 @@
 # In[1]:
 
 
-# from sc import sc
+from utils.scanpy.sc import *
+from utils.scanpy import pl
 

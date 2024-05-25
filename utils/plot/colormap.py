@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[48]:
+# In[ ]:
 
 
 """colormap
@@ -13,16 +13,15 @@
 """
 
 
-# In[2]:
+# In[ ]:
 
 
-from pathlib import Path
-import json
+from utils.general import json
 
 from utils.plot.figure import *
 
 
-# In[3]:
+# In[ ]:
 
 
 palettes = json.loads(Path(__file__).parent\
@@ -34,18 +33,17 @@ palettes.update({k: v.split(',') for k, v in palettes.items()
 # In[ ]:
 
 
-def get_color(serise):
+def get_color(count):
     palette = None
-    serise = pd.Series(pd.Series(serise).unique())
-    if serise.size <= 20:
+    if count <= 20:
         palette = palettes['default_20']
-    elif serise.size <= 28:
+    elif count <= 28:
         palette = palettes['default_28']
-    elif serise.size <= len(palettes['default_102']):  # 103 colors
+    elif count <= len(palettes['default_102']):  # 103 colors
         palette = palettes['default_102']
     else:
         raise Exception("[categories too long] {}".format(serise.size))
-    return palette[:serise.size]
+    return palette[:count]
 
 def get(serise, color_missing_value="lightgray",
         offset=2, filter_offset=True):
@@ -55,7 +53,7 @@ def get(serise, color_missing_value="lightgray",
     serise = pd.Series(np.concatenate(
         (['_{}'.format(i) for i in range(offset)], serise.dropna().astype(str))))
 
-    palette = get_color(serise)
+    palette = get_color(serise.size)
 
     colormap = {k: v for k, v in zip(serise, palette)}
     if has_missing_value:

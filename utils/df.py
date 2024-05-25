@@ -16,10 +16,7 @@
 # In[ ]:
 
 
-from pathlib import Path
-import numpy as np
-
-import pandas as pd
+from utils.general import Path,np,pd
 
 
 # In[ ]:

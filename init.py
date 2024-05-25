@@ -6,14 +6,17 @@
 # conda activate
 # 
 # cd ~/link/csMAHN_Spatial
+# {
 # jupyter nbconvert utils/*.ipynb --to python && rm utils/del_py.py
 # jupyter nbconvert utils/scanpy/*.ipynb --to python
 # jupyter nbconvert utils/plot/*.ipynb --to python
 # jupyter nbconvert init.ipynb --to python
 # jupyter nbconvert README.ipynb --to markdown
-# 
-# 
-# :
+# clear
+# echo '----------------------------------------'
+# echo '[finish]'
+# echo '----------------------------------------'
+# }
 # 
 # ```
 
@@ -36,33 +39,49 @@ import utils as ut
 print(ut.__doc__)
 
 
-# In[ ]:
+# In[3]:
 
 
-# ut.general
-Block = ut.Block
-json = ut.json
+from utils.general import *
+
+
+# # 包名暴露
+
+# In[4]:
+
 
 Path = ut.df.Path
 np = ut.df.np
 pd = ut.df.pd
 
+mpl = ut.pl.figure.mpl
+plt = ut.pl.figure.plt
+sns = ut.pl.figure.sns
+
 sc = ut.sc.sc
 
 
-# In[ ]:
+# In[5]:
 
 
 pl = ut.pl.pl
-mpl = pl.figure.mpl
-plt = pl.figure.plt
-sns = pl.figure.sns
 
 
-# In[4]:
+# In[6]:
 
 
 # print(*[_ for _ in  dir(ut)
 #         if not _.startswith('__')],
 #       sep='\n')
+
+
+# # path
+
+# In[7]:
+
+
+p_root = Path('~/link/csMAHN_Spatial').expanduser()
+p_cache = p_root.joinpath('dataset/cache')
+
+[_.mkdir(parents=True,exist_ok=True) for _ in [p_cache]]
 

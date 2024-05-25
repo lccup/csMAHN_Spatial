@@ -11,6 +11,14 @@
 # jupyter nbconvert utils/plot/*.ipynb --to python
 # :
 # ```
+# 
+# 
+# ```mermaid
+# graph LR
+#     general[general]
+#     df[df]
+#     general --> df
+# ```
 
 # In[ ]:
 
@@ -36,21 +44,20 @@ __version__ = '0.0.1'
 # In[ ]:
 
 
-from utils import general
-json = general.json
-Block = general.Block
+from utils.general import *
 
 
 # In[ ]:
 
 
+from utils import arr
 from utils import df
 
 
 # In[ ]:
 
 
-from utils.scanpy import sc
+from utils import scanpy as sc
 
 
 # In[ ]:
