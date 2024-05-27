@@ -13,7 +13,7 @@
 # In[3]:
 
 
-from utils.general import Path,np,pd,plt,mpl,sns
+from utils.general import Path,np,pd,plt,mpl,sns,json
 import scanpy as sc
 import scipy
 from collections.abc import Iterable
@@ -29,6 +29,8 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 def load_adata(p_dir,prefix=''):
+    def _load_json(p):
+        return json.loads(p.read_text())
 
     def load_h5ad_from_mtx(p_dir,prefix=''):
         p_dir = Path(p_dir)
@@ -42,7 +44,7 @@ def load_adata(p_dir,prefix=''):
         else:
             print('[not exists]{}obs.csv\nin {}'.format(prefix,p_dir))
         return adata
-
+    
     p_dir = Path(p_dir)
     adata = None
     if p_dir.match("*.h5ad"):
@@ -69,17 +71,52 @@ def load_adata(p_dir,prefix=''):
             for img in p_uns_spatial.joinpath('images').iterdir():
                 dict_spatial['images'][img.stem]  = plt.imread(img)
                 
-            if p_uns_spatial.joinpath('metadata.json').exists():
-                dict_spatial['metadata'] = json.loads(
-                    p_uns_spatial.joinpath('metadata.json').read_text())
-            if p_uns_spatial.joinpath('scalefactors.json').exists():
-                dict_spatial['scalefactors'] = json.loads(
-                    p_uns_spatial.joinpath('scalefactors.json').read_text())
+            for p in p_uns_spatial.iterdir():
+                if p.match('*.json'):
+                    dict_spatial[p.stem] = _load_json(p)
+
             adata.uns['spatial'][p_uns_spatial.stem] = dict_spatial
 
     return adata
 
-def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True):
+def load_spatial_images(adata,key_uns_spatial=None,
+    key_images_path='images_path',update_images=False):
+    def load_spatial_images_one(
+            adata,
+            key_uns_spatial,
+            key_images_path='images_path',
+            update_images=False):
+        assert key_uns_spatial in adata.uns['spatial'].keys()
+        dict_spatial = adata.uns['spatial'][key_uns_spatial]
+
+        assert key_images_path in dict_spatial.keys()
+        assert dict_spatial[key_images_path], "[Error] no img path"
+
+        if 'images' not in dict_spatial.keys():
+            dict_spatial['images'] = {}
+
+        for k_img_path, img_path in dict_spatial[key_images_path].items():
+            if update_images or (
+                    k_img_path not in dict_spatial['images'].keys()):
+                dict_spatial['images'][k_img_path] = mpl.image.imread(
+                    img_path)
+
+        adata.uns['spatial'][key_uns_spatial] = dict_spatial
+        return adata
+
+    assert 'spatial' in adata.uns.keys()
+    if key_uns_spatial is None:
+        key_uns_spatial = adata.uns['spatial'].keys()
+    elif isinstance(key_uns_spatial, str):
+        key_uns_spatial = [key_uns_spatial]
+
+    for k in key_uns_spatial:
+        adata = load_spatial_images_one(
+            adata, k, key_images_path, update_images)
+    return adata
+
+def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True,
+               key_images_path='images_path'):
     """
     将adata对象保存为matrix.mtx,barcodes.tsv,genes.tsv
     尝试保存obs.csv
@@ -88,6 +125,15 @@ def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True):
     as_int : 是否将矩阵转换int类型
         default True
 """
+    def _save_img(arr,p):
+        # 存为npz和npy都极其巨大
+        # 图片压缩技术是真的强
+        im = Image.fromarray(arr)
+        im.save(p)
+    
+    def _save_json(data,p):
+        p.write_text(json.dumps(data))
+    
     assert adata.obs.index.is_unique, '[Error] obs index is not unique'
     assert adata.var.index.is_unique, '[Error] var index is not unique'
 
@@ -155,27 +201,36 @@ def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True):
                             prefix,
                             k_obsm)),
                 index=False)
+
         # [save] adata.uns['spatial']
         for k_spatial, dict_spatial in adata.uns['spatial'].items():
             p_dir.joinpath('{}uns/spatial/{}/images'.format(prefix,
                            k_spatial)) .mkdir(parents=True, exist_ok=True)
-            for k_img, img in dict_spatial['images'].items():
-                # 存为npz和npy都极其巨大
-                # 图片压缩技术是真的强
-                im = Image.fromarray(img)
-                im.save(p_dir.joinpath('{}uns/spatial/{}/images/{}.jpg'
-                                       .format(prefix, k_spatial, k_img)))
-            p_dir.joinpath(
-                '{}uns/spatial/{}/metadata.json'.format(
-                    prefix, k_spatial)) .write_text(
-                json.dumps(
-                    dict_spatial['metadata'])) if dict_spatial['metadata'] else None
-
-            p_dir.joinpath(
-                '{}uns/spatial/{}/scalefactors.json'.format(
-                    prefix, k_spatial)) .write_text(
-                json.dumps(
-                    dict_spatial['scalefactors'])) if dict_spatial['scalefactors'] else None
+            # img 仅保存dict_spatial[key_images_path]中没有路径的img
+            
+            for k_img, img in dict_spatial.setdefault('images',{}).items():
+                if k_img in  dict_spatial.setdefault(key_images_path,{}).keys():
+                    pass
+                else:
+                    _save_img(img,p_dir.joinpath(
+                        '{}uns/spatial/{}/images/{}.jpg'\
+                        .format(prefix, k_spatial, k_img)))
+            
+            if dict_spatial.setdefault(key_images_path,None):
+                _save_json({_k : str(Path(_v).absolute())
+                for _k,_v in dict_spatial[key_images_path].items()},
+                           p_dir.joinpath('{}uns/spatial/{}/{}.json'\
+                                          .format(prefix, k_spatial,key_images_path)))
+            # scalefactors
+            if dict_spatial.setdefault('scalefactors',None):
+                _save_json(dict_spatial['scalefactors'],
+                           p_dir.joinpath('{}uns/spatial/{}/scalefactors.json'\
+                                          .format(prefix, k_spatial)))
+            # metadata
+            if dict_spatial.setdefault('metadata',None):
+                _save_json(dict_spatial['metadata'],
+                           p_dir.joinpath('{}uns/spatial/{}/metadata.json'\
+                                          .format(prefix, k_spatial)))
 
     print("[out] {}".format(p_dir))
 

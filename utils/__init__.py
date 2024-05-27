@@ -5,19 +5,24 @@
 # 
 # conda activate
 # 
-# cd ~/link/csMAHN_Spatial
-# jupyter nbconvert utils/*.ipynb --to python && rm utils/del_py.py
-# jupyter nbconvert utils/scanpy/*.ipynb --to python
-# jupyter nbconvert utils/plot/*.ipynb --to python
-# :
+# cd ~/link/csMAHN_Spatial/utils
+# {
+# jupyter nbconvert *.ipynb --to python && rm del_py.py
+# jupyter nbconvert scanpy/*.ipynb --to python
+# jupyter nbconvert plot/*.ipynb --to python
+# clear
+# echo '----------------------------------------'
+# echo '[finish] nbconvert'
+# echo '----------------------------------------'
+# }
 # ```
 # 
 # 
 # ```mermaid
 # graph LR
 #     general[general]
-#     df[df]
-#     general --> df
+#     general --> df[df]
+#     general --> arr[arr]
 # ```
 
 # In[ ]:
@@ -41,9 +46,19 @@ print(ut.__version__)
 __version__ = '0.0.1'
 
 
-# In[ ]:
+# In[2]:
 
 
+def module_exists(module_name):
+    import importlib.util
+    import sys
+    return module_name in sys.modules or importlib.util.find_spec(module_name)
+
+
+# In[3]:
+
+
+from utils import general
 from utils.general import *
 
 
@@ -57,11 +72,23 @@ from utils import df
 # In[ ]:
 
 
-from utils import scanpy as sc
+with Block('[import utils.scanpy]',context={
+    'module':'scanpy'.split(',')
+}) as context:
+    if all([ module_exists(_) for _ in context.module]):
+        from utils import scanpy as sc
+    else:
+        sc = '[module has not installed] {}'.format(','.join(context.module))
 
 
 # In[ ]:
 
 
-import utils.plot as pl
+with Block('[import utils.plot]',context={
+    'module':'matplotlib,seaborn'.split(',')
+}) as context:
+    if all([ module_exists(_) for _ in context.module]):
+        import utils.plot as pl
+    else:
+        sc = '[module has not installed] {}'.format(','.join(context.module))
 

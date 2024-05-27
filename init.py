@@ -14,7 +14,7 @@
 # jupyter nbconvert README.ipynb --to markdown
 # clear
 # echo '----------------------------------------'
-# echo '[finish]'
+# echo '[finish] nbconvert'
 # echo '----------------------------------------'
 # }
 # 
@@ -39,40 +39,55 @@ import utils as ut
 print(ut.__doc__)
 
 
-# In[3]:
+# In[4]:
 
 
 from utils.general import *
 
 
+# In[21]:
+
+
+_temp = np.array([_ for _ in dir(ut.general) if not _.startswith('_')])
+print('\n[names import from utils.general]\n'.center(150,'-'))
+for _ in np.array_split(_temp,max(2,np.ceil(_temp.size//4))):
+    print('  {}'.format(' '.join(_)))
+del _temp
+
+
 # # 包名暴露
 
-# In[4]:
+# In[ ]:
 
 
-Path = ut.df.Path
-np = ut.df.np
-pd = ut.df.pd
+def module_exists(module_name):
+    import importlib.util
+    import sys
+    return module_name in sys.modules or importlib.util.find_spec(module_name)
 
-mpl = ut.pl.figure.mpl
-plt = ut.pl.figure.plt
-sns = ut.pl.figure.sns
 
-sc = ut.sc.sc
+# In[ ]:
+
+
+with Block('[import utils.scanpy]',context={
+    'module':'scanpy'.split(',')
+}) as context:
+    if all([ module_exists(_) for _ in context.module]):
+        sc = ut.sc.sc
+    else:
+        sc = ut.sc
 
 
 # In[5]:
 
 
-pl = ut.pl.pl
-
-
-# In[6]:
-
-
-# print(*[_ for _ in  dir(ut)
-#         if not _.startswith('__')],
-#       sep='\n')
+with Block('[import utils.plot]',context={
+    'module':'matplotlib,seaborn'.split(',')
+}) as context:
+    if all([ module_exists(_) for _ in context.module]):
+        pl = ut.pl.pl        
+    else:
+        pl = ut.pl
 
 
 # # path

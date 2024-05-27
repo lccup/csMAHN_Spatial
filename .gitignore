@@ -27,11 +27,12 @@ ignore
 /utils/del_py.py
 
 ## for /dataset 仅保留.ipynb
-/dataset/**/info_series
-/dataset/**/info_download*
+/dataset/**/info*
 /dataset/**/*series_matrix.txt
+/dataset/**/*.h5
 /dataset/**/*.gz
 /dataset/**/*log*
 /dataset/**/*.jpg
+/dataset/**/*.png
 /dataset/**/*.rtf
 /dataset/**/pre_*.ipynb
