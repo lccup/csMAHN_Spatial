@@ -26,8 +26,15 @@ ignore
 /utils/**/*.ipynb
 /utils/del_py.py
 
-## for /dataset 仅保留.ipynb
-/dataset/**/info*
+## for /dataset 
+## 获取数据所需的信息要保留
+!/dataset/**/info_table*
+!/dataset/**/info_download
+!/dataset/**/info_download_series_supplementary
+!/dataset/**/info_download_series_sample
+
+# 仅保留.ipynb 和info_download, 其他文件排除
+/dataset/**/info_series
 /dataset/**/*series_matrix.txt
 /dataset/**/*.h5
 /dataset/**/*.gz
@@ -35,4 +42,10 @@ ignore
 /dataset/**/*.jpg
 /dataset/**/*.png
 /dataset/**/*.rtf
+/dataset/**/*.pdf
 /dataset/**/pre_*.ipynb
+/dataset/Brain_hs_DLPFC/HumanPilot
+/dataset/Brain_hs_DLPFC/h5/*h5
+/dataset/Brain_mm/Visium_Fresh_Frozen_Adult_Mouse_Brain/
+/dataset/Brain_mm/V1_Mouse_Brain_Sagittal_Anterior_Section_2/
+/dataset/Brain_mm/CytAssist_FFPE_Sagittal_Mouse_Brain/

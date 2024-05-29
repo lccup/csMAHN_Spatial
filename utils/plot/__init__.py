@@ -11,10 +11,25 @@
 # ```
 # 
 # ```mermaid
-# graph TD
-#     fig[fig]
-#     fig--> colormap[colormap]
-#     fig--> pl[pl]
+# graph LR;
+#     __init__{{__init__}};
+#     general[general];
+#     general[general] -.-> __init__;
+# 
+# 
+#     subgraph plot
+#         plot.__init__{{__init__}};
+#         plot.figure[figure];
+#         plot.colormap[colormap];
+#         plot.pl[pl];
+#         plot.figure --> plot.colormap
+#         plot.figure -.-> plot.pl
+#         plot.colormap -.-> plot.pl
+#         plot.pl -.-> plot.__init__
+#     end
+#     general --> plot.figure
+#     plot.__init__ -.-> __init__
+# 
 # ```
 
 # In[2]:
@@ -28,5 +43,5 @@
 # In[ ]:
 
 
-from utils.plot import pl
+from utils.plot.pl import *
 

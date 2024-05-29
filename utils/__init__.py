@@ -17,12 +17,44 @@
 # }
 # ```
 # 
+# <script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
 # 
 # ```mermaid
-# graph LR
-#     general[general]
-#     general --> df[df]
-#     general --> arr[arr]
+# graph LR;
+#     __init__{{__init__}};
+#     general[general];
+#     general --> df[df];
+#     general --> arr[arr];
+#     df -.-> __init__
+#     arr -.-> __init__
+#     general --> crawl[crawl]
+#     crawl -.-> __init__
+#     general -.-> |*| __init__
+# 
+#     subgraph scanpy
+#         scanpy.__init__{{__init__}};
+#         scanpy.sc[sc];
+#         scanpy.pl[pl];
+#         scanpy.sc -->scanpy.pl
+#         scanpy.pl -.-> scanpy.__init__
+#         scanpy.sc -.-> |*| scanpy.__init__
+#     end
+#     general --> scanpy.sc
+#     scanpy.__init__ -.-> __init__
+# 
+#     subgraph plot
+#         plot.__init__{{__init__}};
+#         plot.figure[figure];
+#         plot.colormap[colormap];
+#         plot.pl[pl];
+#         plot.figure --> plot.colormap
+#         plot.figure -.-> plot.pl
+#         plot.colormap -.-> plot.pl
+#         plot.pl -.-> |*| plot.__init__
+#     end
+#     general --> plot.figure
+#     plot.__init__ -.-> __init__
+# 
 # ```
 
 # In[ ]:
@@ -46,16 +78,7 @@ print(ut.__version__)
 __version__ = '0.0.1'
 
 
-# In[2]:
-
-
-def module_exists(module_name):
-    import importlib.util
-    import sys
-    return module_name in sys.modules or importlib.util.find_spec(module_name)
-
-
-# In[3]:
+# In[ ]:
 
 
 from utils import general
@@ -67,6 +90,18 @@ from utils.general import *
 
 from utils import arr
 from utils import df
+
+
+# In[ ]:
+
+
+with Block('[import utils.crawl]',context={
+    'module':'requests,lxml'.split(',')
+}) as context:
+    if all([ module_exists(_) for _ in context.module]):
+        from utils import crawl
+    else:
+        crawl = '[module has not installed] {}'.format(','.join(context.module))
 
 
 # In[ ]:
@@ -88,7 +123,13 @@ with Block('[import utils.plot]',context={
     'module':'matplotlib,seaborn'.split(',')
 }) as context:
     if all([ module_exists(_) for _ in context.module]):
-        import utils.plot as pl
+        from utils import plot as pl
     else:
-        sc = '[module has not installed] {}'.format(','.join(context.module))
+        pl = '[module has not installed] {}'.format(','.join(context.module))
+
+
+# In[ ]:
+
+
+del context
 

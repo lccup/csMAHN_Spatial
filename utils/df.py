@@ -22,8 +22,14 @@ from utils.general import Path,np,pd
 # In[ ]:
 
 
+def show(df,n=2):
+    from IPython.display import display
+    display(df.head(n),df.shape)
+
+
 def iterdir(p,path_match='',path_match_filter=[],select='f'):
     p = Path(p)
+    assert p.exists(),'[not exists] {}'.format(p)
     assert p.is_dir(),'[Error] p is not a dir'
     
     res = pd.DataFrame({'path':p.iterdir()})
@@ -36,6 +42,7 @@ def iterdir(p,path_match='',path_match_filter=[],select='f'):
     else:
         # file and dir
         pass
+    assert res.shape[0] > 0,'[Error] no item'
     
     if path_match:
         res = res[res['path'].apply(lambda x:x.match(path_match))]
@@ -67,4 +74,5 @@ def group_agg(df,groupby_list,agg_dict=None,dropna=True,
 
 def apply_merge_field(df, str_format):
     return df.apply(lambda row: str_format.format(**row), axis=1)
+
 

@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
-"""sc scanpy
-
-
+"""utils.scanpy as ut.sc
+single cell
 """
 
 
-# In[3]:
+# In[ ]:
 
 
-from utils.general import Path,np,pd,plt,mpl,sns,json
+from utils.general import Path, np, pd, plt, mpl, sns, json, show_dict_key
 import scanpy as sc
 import scipy
 from collections.abc import Iterable
@@ -23,54 +22,254 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 
+# # other
+
+# In[ ]:
+
+
+def reverse_img(img_arr, reverse_h=False, reverse_v=False, transpose=False):
+    """旋转图片
+
+Parameters
+----------
+reverse_h : 水平方向是否颠倒
+reverse_v : 垂直方向是否颠倒
+transpose : 是否旋转
+    """
+    def reverse_color_layer(
+            arr,
+            reverse_h=True,
+            reverse_v=True,
+            transpose=False):
+        """对rgb颜色分量进行转置
+
+Parameters
+----------
+arr : np.arrary 2d
+    颜色分量,2维 数组
+        """
+        assert len(arr.shape) == 2
+        res = None
+        if reverse_h and reverse_v:
+            res = arr[::-1, ::-1]
+        elif reverse_v:
+            res = arr[::-1, :]
+        elif reverse_h:
+            res = arr[:, ::-1]
+        else:
+            # reverse_h = False and reverse_v = False
+            res = arr
+        if transpose:
+            res = res.transpose()
+        return res
+
+    def yield_color_layer(arr):
+        """获取颜色分量
+
+Parameters
+----------
+arr :
+    图片数组, 3维 数组
+    (M,N,3) or (M,N,4)
+    r,g,b      r,g,b,a
+        """
+        assert len(arr.shape) == 3
+        for i in range(arr.shape[2]):
+            yield arr[:, :, i]
+
+    def merge_color_layer(*args):
+        return np.dstack(args)
+
+    return merge_color_layer(*[reverse_color_layer(_,
+                                                   reverse_h=reverse_h, reverse_v=reverse_v,
+                                                   transpose=transpose)
+                               for _ in yield_color_layer(img_arr)])
+
+
+def reverse_spatial_img(adata, key_uns_spatial='spatial',
+                        key_images=None,
+                        reverse_h=True, reverse_v=True,
+                        transpose=False):
+    """转置切片
+
+Parameters
+----------
+key_uns_spatial : str (default: 'spatial')
+    用于指定样本操作
+key_images : list,str (default: None)
+    用于限制操作的图像,默认全部操作
+"""
+    assert 'spatial' in adata.uns.keys()
+
+    dict_spatial = adata.uns['spatial'][key_uns_spatial]
+    if key_images is None:
+        key_images = dict_spatial['images'].keys()
+
+    for k_img, img_arr in dict_spatial['images'].items():
+        dict_spatial['images'][k_img] = reverse_img(img_arr,
+                                                    reverse_h=reverse_h,
+                                                    reverse_v=reverse_v,
+                                                    transpose=transpose)
+    return adata
+
+
+# # show
+
+# In[ ]:
+
+
+def show(adata, n=2, show_var=False, show_X_gt_zero=False):
+    from IPython.display import display
+    display(adata)
+    print("""[check unique]
+\tobs.index\tvar.index
+\t{}\t\t{}""".format(adata.obs.index.is_unique,adata.var.index.is_unique))
+    display(adata.obs.head(n), adata.obs.shape)
+    display(adata.var.head(n), adata.var.shape) if show_var else None
+    display(adata.X[adata.X > 0][:10]) if show_X_gt_zero else None
+
+
+def show_spatial(adata):
+    if 'spatial' in adata.obsm.keys():
+        print("# adata.obsm['spatial']".ljust(75, '-'))
+        print(adata.obsm['spatial'][:3], '...\nshape: ',
+              adata.obsm['spatial'].shape, '\n')
+    else:
+        print("[not exists] adata.obsm['spatial']")
+
+    if 'spatial' in adata.uns.keys():
+        print("# adata.uns['spatial']".ljust(75, '-'))
+        show_dict_key(adata.uns['spatial'], "adata.uns['spatial']")
+        for key_uns_spatial, dict_spatial in adata.uns['spatial'].items():
+            show_dict_key(dict_spatial, key_uns_spatial)
+            _k = 'images' if 'images' in dict_spatial.keys() else 'images_path'
+            if _k in dict_spatial.keys():
+                show_dict_key(
+                    dict_spatial[_k], "{}['{}']".format(
+                        key_uns_spatial, _k))
+            else:
+                print("[no imgs]")
+    else:
+        print("[not exists] adata.uns['spatial']")
+
+
+# # get and yield
+
+# In[ ]:
+
+
+def get_key_uns_spatial(adata):
+    assert 'spatial' in adata.uns.keys()
+    return list(adata.uns['spatial'].keys())
+    
+def get_dict_spatial(adata,key_uns_spatial):
+    return adata.uns['spatial'][key_uns_spatial]
+
+def yield_dict_spatial(adata):
+    for key_uns_spatial in get_key_uns_spatial(adata):
+        yield get_dict_spatial(adata,key_uns_spatial)
+def yield_key_uns_spatial_and_key_img(adata):
+    for key_uns_spatial in get_key_uns_spatial(adata):
+        dict_spatial = get_dict_spatial(adata,key_uns_spatial)
+        _k = 'images' if dict_spatial.setdefault('images',{}) else 'images_path'
+        for k_img in dict_spatial.setdefault(_k,{}).keys():
+            yield (key_uns_spatial,k_img)
+
+
+
+
+def get_img(adata, key_uns_spatial='spatial', key_img='img'):
+    """尝试从adata.uns['spatial'][key_uns_spatial]\
+['images']['key_img']
+"""
+    return adata.uns['spatial'][key_uns_spatial]\
+        .setdefault('images', {})\
+        .setdefault(key_img, None)
+
+
+def get_scalefactor(adata, key_uns_spatial='spatial', key_img='img',
+                    key_scalefactors_format='tissue_{}_scalef',
+                    default_value=1):
+    """尝试从adata.uns['spatial'][key_uns_spatial]\
+['scalefactors'][key_scalefactors_format.format(key_img)]
+中获取scalefactor
+若失败则返回default_value
+
+Parameters
+----------
+default_value : int,float (default: 1)
+"""
+    return adata.uns['spatial'][key_uns_spatial]\
+        .setdefault('scalefactors', {})\
+        .setdefault(key_scalefactors_format.format(key_img), default_value)
+
+
+def get_spot_size(adata, key_uns_spatial='spatial', default_value=1):
+    """尝试从adata.uns['spatial'][key_uns_spatial]\
+['scalefactors']['spot_diameter_fullres']
+中获取scalefactor
+若失败则返回default_value
+
+Parameters
+----------
+default_value : int,float (default: 1)
+"""
+    return adata.uns['spatial'][key_uns_spatial]\
+        .setdefault('scalefactors', {})\
+        .setdefault('spot_diameter_fullres', default_value)
+
+
 # # I/O
 
 # In[ ]:
 
 
-def load_adata(p_dir,prefix=''):
+def load_adata(p_dir, prefix=''):
     def _load_json(p):
         return json.loads(p.read_text())
 
-    def load_h5ad_from_mtx(p_dir,prefix=''):
+    def load_h5ad_from_mtx(p_dir, prefix=''):
         p_dir = Path(p_dir)
         assert p_dir.joinpath('{}matrix.mtx'.format(prefix)).exists(
-        ), '[not exists] {}matrix.mtx\nin {}'.format(prefix,p_dir)
-        
-        adata = sc.read_10x_mtx(p_dir,prefix=prefix)
+        ), '[not exists] {}matrix.mtx\nin {}'.format(prefix, p_dir)
+
+        adata = sc.read_10x_mtx(p_dir, prefix=prefix)
         # obs.csv
         if p_dir.joinpath('{}obs.csv'.format(prefix)).exists():
-            adata.obs = pd.read_csv(p_dir.joinpath('{}obs.csv'.format(prefix)), index_col=0)
+            adata.obs = pd.read_csv(
+                p_dir.joinpath(
+                    '{}obs.csv'.format(prefix)),
+                index_col=0)
         else:
-            print('[not exists]{}obs.csv\nin {}'.format(prefix,p_dir))
+            print('[not exists]{}obs.csv\nin {}'.format(prefix, p_dir))
         return adata
-    
+
     p_dir = Path(p_dir)
     adata = None
     if p_dir.match("*.h5ad"):
         adata = sc.read_h5ad(p_dir)
     elif p_dir.is_dir() and p_dir.joinpath('{}matrix.mtx'.format(prefix)).exists():
-        adata = load_h5ad_from_mtx(p_dir,prefix)
+        adata = load_h5ad_from_mtx(p_dir, prefix)
     else:
         raise Exception("[can not load adata] {}".format(p_dir))
 
     # [load] spatial info: adata.obsm and adata.uns['spatial']
-    ## adata.obsm
+    # adata.obsm
     if p_dir.joinpath('{}obsm'.format(prefix)).exists():
         for p_obsm in p_dir.joinpath('{}obsm'.format(prefix)).iterdir():
             if not p_obsm.match('*csv'):
                 continue
-            adata.obsm[p_obsm.stem] =pd.read_csv(p_obsm).to_numpy()
-    ## adata.uns['spatial']
+            adata.obsm[p_obsm.stem] = pd.read_csv(p_obsm).to_numpy()
+    # adata.uns['spatial']
     if p_dir.joinpath('{}uns/spatial'.format(prefix)).exists():
         adata.uns['spatial'] = {}
         for p_uns_spatial in p_dir.joinpath('{}uns/spatial'.format(prefix)
-                                           ).iterdir():
-            
-            dict_spatial = {'images':{}}
+                                            ).iterdir():
+
+            dict_spatial = {'images': {}}
             for img in p_uns_spatial.joinpath('images').iterdir():
-                dict_spatial['images'][img.stem]  = plt.imread(img)
-                
+                dict_spatial['images'][img.stem] = plt.imread(img)
+
             for p in p_uns_spatial.iterdir():
                 if p.match('*.json'):
                     dict_spatial[p.stem] = _load_json(p)
@@ -79,12 +278,33 @@ def load_adata(p_dir,prefix=''):
 
     return adata
 
-def load_spatial_images(adata,key_uns_spatial=None,
-    key_images_path='images_path',update_images=False):
+
+def load_spatial_images(
+        adata,
+        key_uns_spatial=None,
+        key_images_path='images_path',
+        key_images=None,
+        kw_reverse_img={'reverse_h':False,
+                        'reverse_v':False,
+                        'transpose':False},
+        update_images=False):
+    """加载切片图像
+从dict_spatial['key_images_path']加载
+到dict_spatial['images']中
+
+Parameters
+----------
+key_uns_spatial : str (default: None)
+    用于指定样本名称,默认全部导入
+key_images : list,str (default: None)
+    用于限制导入的图像,默认全部导入
+"""
     def load_spatial_images_one(
             adata,
             key_uns_spatial,
             key_images_path='images_path',
+            key_images=None,
+            kw_reverse_img={},
             update_images=False):
         assert key_uns_spatial in adata.uns['spatial'].keys()
         dict_spatial = adata.uns['spatial'][key_uns_spatial]
@@ -95,11 +315,19 @@ def load_spatial_images(adata,key_uns_spatial=None,
         if 'images' not in dict_spatial.keys():
             dict_spatial['images'] = {}
 
+        if key_images is None:
+            key_images = list(dict_spatial[key_images_path].keys())
+        if isinstance(key_images, str):
+            key_images = [key_images]
+
         for k_img_path, img_path in dict_spatial[key_images_path].items():
+            if k_img_path not in key_images:
+                continue
             if update_images or (
                     k_img_path not in dict_spatial['images'].keys()):
-                dict_spatial['images'][k_img_path] = mpl.image.imread(
-                    img_path)
+                
+                dict_spatial['images'][k_img_path] = reverse_img(mpl.image.imread(
+                    img_path),**kw_reverse_img)
 
         adata.uns['spatial'][key_uns_spatial] = dict_spatial
         return adata
@@ -112,11 +340,58 @@ def load_spatial_images(adata,key_uns_spatial=None,
 
     for k in key_uns_spatial:
         adata = load_spatial_images_one(
-            adata, k, key_images_path, update_images)
+            adata, k, key_images_path, key_images, kw_reverse_img,update_images)
     return adata
 
+
+def load_obsm_spatial(
+        adata, keys_pixel='pixel_x,pixel_y'.split(','),
+        drop_obs=False):
+    adata.obsm["spatial"] = adata.obs.loc[:, keys_pixel].to_numpy()
+    adata.obs = adata.obs.drop(
+        columns=keys_pixel) if drop_obs else adata.obs
+    return adata
+
+def load_obsm_UMAP(
+        adata, keys_umap='UMAP1,UMAP2'.split(','),
+        drop_obs=False):
+    adata.obsm["X_umap"] = adata.obs.loc[:, keys_umap].to_numpy()
+    adata.obs = adata.obs.drop(
+        columns=keys_umap) if drop_obs else adata.obs
+    return adata
+
+
+
+def load_uns_spatial(adata, key_uns_spatial='spatial',
+                     path_imgs=None,
+                     path_jsons=None):
+    """加载adata.uns['spatial'][key_uns_spatial]
+Parameters
+----------
+key_uns_spatial : str (default: 'spatial')
+    pass
+path_imgs : dict, str, Path (default: None)
+    None is not allowed
+    if provide str or Path, the key of img will be 'img'
+"""
+    assert path_imgs is not None, '[Error] no imgs'
+    if isinstance(path_imgs, (str, Path)):
+        path_imgs = {'img': Path(path_imgs)}
+
+    dict_spatial = {k: {} for k in 'images_path'.split(',')}
+    dict_spatial['images_path'] = path_imgs
+    dict_spatial.update(
+        {k: json.loads(Path(v).read_text())
+         for k, v in path_jsons.items()})
+
+    if 'spatial' not in adata.uns.keys():
+        adata.uns['spatial'] = {}
+    adata.uns['spatial'][key_uns_spatial] = dict_spatial
+    return adata
+
+
 def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True,
-               key_images_path='images_path'):
+                key_images_path='images_path'):
     """
     将adata对象保存为matrix.mtx,barcodes.tsv,genes.tsv
     尝试保存obs.csv
@@ -125,15 +400,15 @@ def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True,
     as_int : 是否将矩阵转换int类型
         default True
 """
-    def _save_img(arr,p):
+    def _save_img(arr, p):
         # 存为npz和npy都极其巨大
         # 图片压缩技术是真的强
         im = Image.fromarray(arr)
         im.save(p)
-    
-    def _save_json(data,p):
+
+    def _save_json(data, p):
         p.write_text(json.dumps(data))
-    
+
     assert adata.obs.index.is_unique, '[Error] obs index is not unique'
     assert adata.var.index.is_unique, '[Error] var index is not unique'
 
@@ -207,29 +482,31 @@ def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True,
             p_dir.joinpath('{}uns/spatial/{}/images'.format(prefix,
                            k_spatial)) .mkdir(parents=True, exist_ok=True)
             # img 仅保存dict_spatial[key_images_path]中没有路径的img
-            
-            for k_img, img in dict_spatial.setdefault('images',{}).items():
-                if k_img in  dict_spatial.setdefault(key_images_path,{}).keys():
+
+            for k_img, img in dict_spatial.setdefault(
+                    'images', {}).items():
+                if k_img in dict_spatial.setdefault(
+                        key_images_path, {}).keys():
                     pass
                 else:
-                    _save_img(img,p_dir.joinpath(
-                        '{}uns/spatial/{}/images/{}.jpg'\
+                    _save_img(img, p_dir.joinpath(
+                        '{}uns/spatial/{}/images/{}.jpg'
                         .format(prefix, k_spatial, k_img)))
-            
-            if dict_spatial.setdefault(key_images_path,None):
-                _save_json({_k : str(Path(_v).absolute())
-                for _k,_v in dict_spatial[key_images_path].items()},
-                           p_dir.joinpath('{}uns/spatial/{}/{}.json'\
-                                          .format(prefix, k_spatial,key_images_path)))
+
+            if dict_spatial.setdefault(key_images_path, None):
+                _save_json({_k: str(Path(_v).absolute())
+                            for _k, _v in dict_spatial[key_images_path].items()},
+                           p_dir.joinpath('{}uns/spatial/{}/{}.json'
+                                          .format(prefix, k_spatial, key_images_path)))
             # scalefactors
-            if dict_spatial.setdefault('scalefactors',None):
+            if dict_spatial.setdefault('scalefactors', None):
                 _save_json(dict_spatial['scalefactors'],
-                           p_dir.joinpath('{}uns/spatial/{}/scalefactors.json'\
+                           p_dir.joinpath('{}uns/spatial/{}/scalefactors.json'
                                           .format(prefix, k_spatial)))
             # metadata
-            if dict_spatial.setdefault('metadata',None):
+            if dict_spatial.setdefault('metadata', None):
                 _save_json(dict_spatial['metadata'],
-                           p_dir.joinpath('{}uns/spatial/{}/metadata.json'\
+                           p_dir.joinpath('{}uns/spatial/{}/metadata.json'
                                           .format(prefix, k_spatial)))
 
     print("[out] {}".format(p_dir))
@@ -239,19 +516,25 @@ def save_as_mtx(adata, p_dir, layer='counts', prefix='', as_int=True,
 
 
 def qc(adata):
-    adata.var["mt"] = adata.var_names.str.match('^MT-',case=False)
-    adata.var["ribo"] = adata.var_names.str.match('^RP[SL]',case=False)
-    adata.var["hb"] = adata.var_names.str.contains("^HB[^(P)]",case=False)
-    sc.pp.calculate_qc_metrics(adata, qc_vars='mt,ribo,hb'.split(','),percent_top=[],
-                               log1p=False,inplace=True)
+    adata.var["mt"] = adata.var_names.str.match('^MT-', case=False)
+    adata.var["ribo"] = adata.var_names.str.match('^RP[SL]', case=False)
+    adata.var["hb"] = adata.var_names.str.contains("^HB[^(P)]", case=False)
+    sc.pp.calculate_qc_metrics(
+        adata,
+        qc_vars='mt,ribo,hb'.split(','),
+        percent_top=[],
+        log1p=False,
+        inplace=True)
 
 
 # In[ ]:
 
 
-def standard_process(adata,kv_hvg = {'n_top_genes':2000,'batch_key':None},
-    kv_neighbors = {'n_neighbors':15,'n_pcs':15},
-    kv_umap = {},kv_leiden = {'resolution':.5}):
+def standard_process(
+    adata, kv_hvg={
+        'n_top_genes': 2000, 'batch_key': None}, kv_neighbors={
+            'n_neighbors': 15, 'n_pcs': 15}, kv_umap={}, kv_leiden={
+                'resolution': .5}):
     """
 单细胞标准流程
 
@@ -274,14 +557,15 @@ def standard_process(adata,kv_hvg = {'n_top_genes':2000,'batch_key':None},
     adata.layers["counts"] = adata.X.copy()
     sc.pp.normalize_total(adata)
     sc.pp.log1p(adata)
-    sc.pp.highly_variable_genes(adata,**kv_hvg)
-    sc.tl.pca(adata,n_comps=50)
+    sc.pp.highly_variable_genes(adata, **kv_hvg)
+    sc.tl.pca(adata, n_comps=50)
     sc.pl.pca_variance_ratio(adata, n_pcs=50, log=True)
-    sc.pp.neighbors(adata,**kv_neighbors)
-    sc.tl.umap(adata,**kv_umap)
-    sc.tl.leiden(adata,**kv_leiden)
+    sc.pp.neighbors(adata, **kv_neighbors)
+    sc.tl.umap(adata, **kv_umap)
+    sc.tl.leiden(adata, **kv_leiden)
     sc.pl.umap(adata, color=["leiden"])
     return adata
+
 
 def subset_adata(adata, *args):
     def _process_values(values):

@@ -8,6 +8,7 @@
 # cd ~/link/csMAHN_Spatial
 # {
 # jupyter nbconvert utils/*.ipynb --to python && rm utils/del_py.py
+# jupyter nbconvert utils/__init__.ipynb --to html
 # jupyter nbconvert utils/scanpy/*.ipynb --to python
 # jupyter nbconvert utils/plot/*.ipynb --to python
 # jupyter nbconvert init.ipynb --to python
@@ -20,32 +21,17 @@
 # 
 # ```
 
-# In[1]:
-
-
-from pathlib import Path
-Path('/public/workspace/licanchengup/link/').parent
-
-
 # In[2]:
 
 
-# utils中有，就不再导入了，太耗时间了
-# from pathlib import Path
-# import numpy as np
-# import pandas as pd
+from IPython.display import display
 
 import utils as ut
-print(ut.__doc__)
-
-
-# In[4]:
-
-
 from utils.general import *
+# print(ut.__doc__)
 
 
-# In[21]:
+# In[3]:
 
 
 _temp = np.array([_ for _ in dir(ut.general) if not _.startswith('_')])
@@ -57,16 +43,7 @@ del _temp
 
 # # 包名暴露
 
-# In[ ]:
-
-
-def module_exists(module_name):
-    import importlib.util
-    import sys
-    return module_name in sys.modules or importlib.util.find_spec(module_name)
-
-
-# In[ ]:
+# In[5]:
 
 
 with Block('[import utils.scanpy]',context={
@@ -78,14 +55,14 @@ with Block('[import utils.scanpy]',context={
         sc = ut.sc
 
 
-# In[5]:
+# In[6]:
 
 
 with Block('[import utils.plot]',context={
     'module':'matplotlib,seaborn'.split(',')
 }) as context:
     if all([ module_exists(_) for _ in context.module]):
-        pl = ut.pl.pl        
+        pl = ut.pl   
     else:
         pl = ut.pl
 
@@ -99,4 +76,24 @@ p_root = Path('~/link/csMAHN_Spatial').expanduser()
 p_cache = p_root.joinpath('dataset/cache')
 
 [_.mkdir(parents=True,exist_ok=True) for _ in [p_cache]]
+
+
+# In[ ]:
+
+
+_df_species_name = pd.DataFrame({
+'simple':'hs,ma,mm,dr'.split(','),
+'common':'human,macaque,mouse,zebrafish'.split(','),
+'official':'Homo sapiens,Macaca,Mus musculus,Danio rerio'.split(',')
+})
+def convert_species_name(value_query,
+                         key_query='simple',
+                         key_return='common',
+                         df_species_name=_df_species_name):
+    assert key_query in df_species_name.columns
+    assert key_return in df_species_name.columns
+    temp = df_species_name.query("`{}` == '{}'".format(key_query,value_query))
+    display(temp)
+    assert temp.shape[0] == 1,'[Error] can not get unique item'
+    return temp[key_return].to_numpy()[0]
 

@@ -24,12 +24,37 @@ rng = np.random.default_rng()
 # In[ ]:
 
 
+def module_exists(module_name):
+    import importlib.util
+    import sys
+    return module_name in sys.modules or importlib.util.find_spec(module_name)
+
+
+# In[ ]:
+
+
 def show_dict_key(data, tag='', sort_key=True):
-    print("\n>{}['']".format(tag).ljust(75, '-'))
+    print("> {}['']".format(tag).ljust(75, '-'))
     ks = list(data.keys())
     if sort_key:
         ks = np.sort(ks)
-    print(*['\t{}'.format(k) for k in ks], sep='\n')
+    print(*['  {}'.format(k) for k in ks], sep='\n')
+
+
+def subset_dict(data,keep_item=[],regex=None):
+    if isinstance(keep_item,str):
+        keep_item = [keep_item]
+    
+    data = data.copy()
+    keys = []
+    if regex:
+        keys = pd.Series(list(data.keys()))
+        keys = keys.str.match(regex)
+    keys = np.unique(np.concatenate([keys,keep_item]))
+    return { k:v
+        for k,v in data.items()
+        if k in keys
+    }
 
 
 # # Block
@@ -114,10 +139,10 @@ with Block('test',show_comment=True):
     def __getattr__(self,name):
         cls = type(self)
         res = self.context.setdefault(name,None)
-        if res:
-            return res
-        else:
+        if res is None:
             raise AttributeError(
                 '{.__name__!r} object has no attribute {!r}'\
                 .format(cls, name))
+        
+        return res
 
