@@ -41,7 +41,7 @@ graph LR;
     plot.__init__ -.-> __init__
 
 ```
-```
+
 
 
 为了解决不同的jupyter kernel中包的安装情况不同而无法导入utils的问题
@@ -64,7 +64,7 @@ with Block('[import utils.plot]',context={
 
 > ## 使用建议
 
-与工作目录的根目录下额外创建`init.py`,并在其中完成
+于工作目录的根目录下额外创建`init.py`,并在其中完成
 
 + 导入`utils`
 

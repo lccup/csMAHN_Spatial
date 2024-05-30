@@ -80,8 +80,7 @@ rc_default.update({
 # legend
 rc_default.update({
     'legend.fontsize':rc_default['font.size'],
-    'legend.frameon':False,
-    'legend.markerscale':20
+    'legend.frameon':False
 })
 
 

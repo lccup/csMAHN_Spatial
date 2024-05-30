@@ -21,7 +21,7 @@
 # 
 # ```
 
-# In[2]:
+# In[1]:
 
 
 from IPython.display import display
@@ -31,7 +31,7 @@ from utils.general import *
 # print(ut.__doc__)
 
 
-# In[3]:
+# In[2]:
 
 
 _temp = np.array([_ for _ in dir(ut.general) if not _.startswith('_')])
@@ -43,7 +43,7 @@ del _temp
 
 # # 包名暴露
 
-# In[5]:
+# In[3]:
 
 
 with Block('[import utils.scanpy]',context={
@@ -55,7 +55,7 @@ with Block('[import utils.scanpy]',context={
         sc = ut.sc
 
 
-# In[6]:
+# In[4]:
 
 
 with Block('[import utils.plot]',context={
@@ -69,16 +69,17 @@ with Block('[import utils.plot]',context={
 
 # # path
 
-# In[7]:
+# In[11]:
 
 
 p_root = Path('~/link/csMAHN_Spatial').expanduser()
 p_cache = p_root.joinpath('dataset/cache')
+p_res = p_root.joinpath('res')
 
-[_.mkdir(parents=True,exist_ok=True) for _ in [p_cache]]
+[_.mkdir(parents=True,exist_ok=True) for _ in [p_cache,p_res]]
 
 
-# In[ ]:
+# In[6]:
 
 
 _df_species_name = pd.DataFrame({
@@ -93,7 +94,29 @@ def convert_species_name(value_query,
     assert key_query in df_species_name.columns
     assert key_return in df_species_name.columns
     temp = df_species_name.query("`{}` == '{}'".format(key_query,value_query))
-    display(temp)
     assert temp.shape[0] == 1,'[Error] can not get unique item'
     return temp[key_return].to_numpy()[0]
+
+
+# # res_publish func
+
+# In[7]:
+
+
+import sys
+from pathlib import Path
+p_root = Path('~/link/res_publish').expanduser()
+sys.path.append(str(p_root)) if not str(p_root) in sys.path else None
+
+
+# In[8]:
+
+
+import func
+
+
+# In[9]:
+
+
+func.run_cross_species_models
 

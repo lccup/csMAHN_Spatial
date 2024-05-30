@@ -86,6 +86,26 @@ arr :
                                for _ in yield_color_layer(img_arr)])
 
 
+
+def show_reverse_img(img_arr):
+    df_parameter = pd.MultiIndex.from_product(
+        [[0,1],[0,1],[0,1]],
+        names='transpose,reverse_h,reverse_v'.split(','))\
+    .to_frame().reset_index(drop=True)
+    df_parameter.index = df_parameter.eval('transpose*2 + reverse_h*4 + reverse_v')
+    df_parameter=df_parameter.apply(lambda x:x>0)
+    
+    fig,axs = plt.subplots(ncols=4,nrows=2)
+    axs = np.ravel(axs)
+
+    for i,row in df_parameter.iterrows():
+            ax = axs[i]
+            ax.imshow(reverse_img(img_arr,**row))
+            ax.set_axis_off()
+            ax.text(0,0,
+                    'transpose={transpose}\nreverse_h={reverse_h}\nreverse_v={reverse_v}'\
+                    .format(**row),verticalalignment='top')
+
 def reverse_spatial_img(adata, key_uns_spatial='spatial',
                         key_images=None,
                         reverse_h=True, reverse_v=True,
@@ -118,16 +138,25 @@ key_images : list,str (default: None)
 # In[ ]:
 
 
-def show(adata, n=2, show_var=False, show_X_gt_zero=False):
+def show(adata,show_adata=False,show_var=False,show_check_unique = False,
+         show_key_images=False,
+         show_X_gt_zero=False,n=2,):
     from IPython.display import display
-    display(adata)
-    print("""[check unique]
+    display(adata) if show_adata else None
+    if show_check_unique:
+        print("""[check unique]
 \tobs.index\tvar.index
 \t{}\t\t{}""".format(adata.obs.index.is_unique,adata.var.index.is_unique))
     display(adata.obs.head(n), adata.obs.shape)
     display(adata.var.head(n), adata.var.shape) if show_var else None
     display(adata.X[adata.X > 0][:10]) if show_X_gt_zero else None
 
+    if show_key_images:
+        display(pd.DataFrame(np.array(
+            list(yield_key_uns_spatial_and_key_img(adata))),
+                columns='key_uns_spatial,key_img'.split(',')).groupby(
+                    'key_uns_spatial,key_img'.split(',')
+                ).agg({'key_img':'count'}).loc[:,[]])
 
 def show_spatial(adata):
     if 'spatial' in adata.obsm.keys():
@@ -344,23 +373,22 @@ key_images : list,str (default: None)
     return adata
 
 
-def load_obsm_spatial(
-        adata, keys_pixel='pixel_x,pixel_y'.split(','),
-        drop_obs=False):
-    adata.obsm["spatial"] = adata.obs.loc[:, keys_pixel].to_numpy()
+def load_obsm_from_obs(adata,keys_obs,key_obsm,drop_obs=False):
+    if isinstance(keys_obs,str):
+        keys_obs = [keys_obs]
+    adata.obsm[key_obsm] = adata.obs.loc[:, keys_obs].to_numpy()
     adata.obs = adata.obs.drop(
-        columns=keys_pixel) if drop_obs else adata.obs
+        columns=keys_obs) if drop_obs else adata.obs
     return adata
+def load_obsm_spatial(adata, keys_pixel='pixel_x,pixel_y'.split(','),
+        drop_obs=False):
+    return load_obsm_from_obs(adata,keys_pixel,'spatial',drop_obs)
+
 
 def load_obsm_UMAP(
         adata, keys_umap='UMAP1,UMAP2'.split(','),
         drop_obs=False):
-    adata.obsm["X_umap"] = adata.obs.loc[:, keys_umap].to_numpy()
-    adata.obs = adata.obs.drop(
-        columns=keys_umap) if drop_obs else adata.obs
-    return adata
-
-
+    return load_obsm_from_obs(adata,keys_umap,'X_umap',drop_obs)
 
 def load_uns_spatial(adata, key_uns_spatial='spatial',
                      path_imgs=None,

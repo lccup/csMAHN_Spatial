@@ -12,12 +12,13 @@ dataset/cache/
 # ignore 文件类型
 *.h5ad
 *.pyc
-
+nohup_*
 
 # ignore 文件
 README.ipynb
 init.ipynb
 ignore
+run.ipynb
 
 # ! not ignore
 !.gitignore

@@ -23,22 +23,28 @@ import utils.plot as pl
 # In[ ]:
 
 
-def umap(adata,key,ax,colormap=None,marker='.',size = 10,kw_scatter={}):
+def umap(adata,key,ax,ax_colormap=None,colormap=None,marker='.',size = 10,kw_scatter={},key_obsm='X_umap'):
     assert key in adata.obs.columns
     if colormap is None:
             colormap = pl.colormap.get(adata.obs[key].sort_values().unique())
-    df_umap = pd.DataFrame(adata.obsm['X_umap'],
+    df_plot = pd.DataFrame(adata.obsm[key_obsm],
                  index=adata.obs.index,
-                 columns='UMAP1,UMAP2'.split(','))\
+                 columns='obsm1,obsm2'.split(','))\
             .join(adata.obs.loc[:, [key]]).copy()
-    df_umap[key] = df_umap[key].astype(str)
+    df_plot[key] = df_plot[key].astype(str)
     # scatter
-    [ax.scatter('UMAP1', 'UMAP2', label=label, s=size,
+    [ax.scatter('obsm1', 'obsm2', label=label, s=size,
                 marker=marker, c=colormap[label],
-                data=df_umap.query("{} == '{}'".format(key, label)),
+                data=df_plot.query("{} == '{}'".format(key, label)),
                 **kw_scatter)
         for label in colormap.keys()]
     ax.set_axis_off()
+    if ax_colormap:
+        pl.colormap.show(colormap,ax=ax_colormap)
+
+
+# In[ ]:
+
 
 def umap_gene(adata,key,ax,marker = '.',
     vmin=None, vmax=None,
@@ -48,18 +54,18 @@ def umap_gene(adata,key,ax,marker = '.',
         'fraction':.025, # 在对应方向上的宽度与父轴宽度的比值
         'aspect':40,# cbar的长宽比
         'pad':.02,   # 与父轴的间距
-        'format':'{x:.1f}'}):
+        'format':'{x:.1f}'},key_obsm='X_umap'):
     assert key in adata.obs.columns or key in adata.var_names
     
-    df_umap = pd.DataFrame(adata.obsm['X_umap'],
+    df_plot = pd.DataFrame(adata.obsm[key_obsm],
                  index=adata.obs.index,
-                 columns='UMAP1,UMAP2'.split(','))\
+                 columns='obsm1,obsm2'.split(','))\
             .join(sc.get.obs_df(adata,[key])).copy()
     
     # scatter
-    cbar = ax.scatter('UMAP1', 'UMAP2', s=size,c=df_umap[key],
+    cbar = ax.scatter('obsm1', 'obsm2', s=size,c=df_plot[key],
                     marker=marker,vmin=vmin, vmax=vmax,cmap=cmap,
-                    data=df_umap,**kw_scatter)
+                    data=df_plot,**kw_scatter)
     ax.figure.colorbar(cbar,ax=ax,**kw_cbar) if draw_cbar else None
     ax.set_axis_off()
     
@@ -71,7 +77,7 @@ def umap_gene(adata,key,ax,marker = '.',
 # In[ ]:
 
 
-def spatial(adata,key,ax,key_uns_spatial='spatial',
+def spatial(adata,key,ax,ax_colormap=None,key_uns_spatial='spatial',
         key_img='img',colormap=None,size=1,
         spot_size=None,scale_factor=None,
         marker='.',draw_img=True,draw_scatter=True,
@@ -137,6 +143,9 @@ size,spot_size : int,float (default : 1,None)
         ax.invert_yaxis()
     ax.set_axis_off()
 
+    if ax_colormap:
+        pl.colormap.show(colormap,ax=ax_colormap)
+        
 def spatial_gene(
     adata, key, key_uns_spatial, key_img, scale_factor, ax,
     vmin=None, vmax=None,cmap='Reds', size=1,
@@ -213,7 +222,7 @@ size,spot_size : int,float (default : 1,None)
 def spatial_3d(adata,key,ax,colormap=None,scale_factor = None,
     marker = '.',size = 10,kw_scatter = {},height = 5,
     query_3d_line = '',kw_line = {'linewidth': .5, 'color': 'grey'},
-    kw_view_init={'elev': 35, 'azim': -90, 'roll': 0}):
+    kw_view_init={'elev': 35, 'azim': -90, 'roll': 0},key_obsm='X_umap'):
     """
 Parameters
 ----------
@@ -242,17 +251,17 @@ size,spot_size : int,float (default : 1,None)
     
     df_plot = pd.DataFrame(adata.obsm['spatial'],
                            index=adata.obs.index, columns='spatial1,spatial2'.split(','))\
-        .mul(scale_factor).join(pd.DataFrame(adata.obsm['X_umap'],
-                                             index=adata.obs.index, columns='UMAP1,UMAP2'.split(',')))\
+        .mul(scale_factor).join(pd.DataFrame(adata.obsm[key_obsm],
+                                             index=adata.obs.index, columns='obsm1,obsm2'.split(',')))\
         .join(adata.obs.loc[:, [key]])
     df_plot[key] = df_plot[key].astype(str)
     
     from utils.arr import scale
     # 将UMAP 的数值 映射到spatial2上
-    df_plot['scale_UMAP1'] = scale(df_plot['UMAP1'],
+    df_plot['scale_obsm1'] = scale(df_plot['obsm1'],
                                           edge_min=df_plot['spatial1'].min(),
                                           edge_max=df_plot['spatial1'].max())
-    df_plot['scale_UMAP2'] = scale(df_plot['UMAP2'],
+    df_plot['scale_obsm2'] = scale(df_plot['obsm2'],
                                           edge_min=df_plot['spatial2'].min(),
                                           edge_max=df_plot['spatial2'].max())
     ## 以0点颠倒
@@ -268,7 +277,7 @@ size,spot_size : int,float (default : 1,None)
         for label in colormap.keys()]
     
     ## scatter [UMAP]
-    [ax.scatter('scale_UMAP1', 'scale_UMAP2', zs=0, label=label, s=circle_radius,
+    [ax.scatter('scale_obsm1', 'scale_obsm2', zs=0, label=label, s=circle_radius,
                 marker=marker, c=colormap[label],
                 data=df_plot.query("{} == '{}'".format(key, label)),
                 **kw_scatter)
@@ -280,8 +289,8 @@ size,spot_size : int,float (default : 1,None)
         query_3d_line = "{0} == {0}".format(key)
     for i_plot, row_plot in df_plot.query(query_3d_line).iterrows():
         kw_line.update({'color': colormap[row_plot[key]]})
-        ax.plot3D(xs=[row_plot['scale_UMAP1'], row_plot['spatial1']],
-                  ys=[row_plot['scale_UMAP2'], row_plot['scale_spatial2']],
+        ax.plot3D(xs=[row_plot['scale_obsm1'], row_plot['spatial1']],
+                  ys=[row_plot['scale_obsm2'], row_plot['scale_spatial2']],
                   zs=[0, height], alpha=.25, **kw_line)
 
     # 调节视图
